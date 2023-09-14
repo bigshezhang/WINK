@@ -62,8 +62,8 @@ public:
 	void EPD_7IN3F_BusyHigh(void);
 	void TurnOnDisplay(void);
     void Reset(void);
-    void EPD_7IN3F_Display(const UBYTE *image);
-    void EPD_7IN3F_Display_part(const UBYTE *image, UWORD xstart, UWORD ystart, 
+    void EPD_7IN3F_Display(UBYTE *image);
+    void EPD_7IN3F_Display_part(UBYTE *image, UWORD xstart, UWORD ystart, 
                                  UWORD image_width, UWORD image_heigh);
     void EPD_7IN3F_Draw_Blank(UWORD rows, UWORD cols, UBYTE color);
     void EPD_7IN3F_Show7Block(void);

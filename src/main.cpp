@@ -25,7 +25,8 @@
 */
 
 #include <SPI.h>
-#include "imagedata.h"
+#include <math.h>
+
 #include "epd7in3f.h"
 #include "LittleFS.h"
 #include <AutoWifi.h>
@@ -33,6 +34,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <EEPROM.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 
@@ -71,6 +73,7 @@ void setup()
   a.startWifi();
   // put your setup code here, to run once:
   Serial.begin(115200);
+
   delay(3000);
   Serial.print("Serial Init Done\n");
 
@@ -85,70 +88,145 @@ void setup()
   // Serial.print("Show pic\r\n ");
   // epd.EPD_7IN3F_Display_part(large_img, 0, 0, 800, 480);
 
-  epd.Sleep();
+  // epd.Sleep();
 }
 
-unsigned char dataArray[192000];
-
-void UpdateEink(){
-  Serial.print("更新数据中\n");
+void updateEink()
+{
+  epd.TurnOnDisplay();
   HTTPClient http;
-  http.begin("http://192.168.1.196:5001/api/photos");
+  http.begin("http://192.168.1.196:5001/api/display");
   int httpCode = http.GET();
-  if(httpCode > 0) {
-      if(httpCode == HTTP_CODE_OK) {
-          int len = http.getSize();
-          Serial.print("数据长度为:");
-          Serial.print(len);
-          Serial.print('\n');
+  if (httpCode > 0)
+  {
+    if (httpCode == HTTP_CODE_OK)
+    {
+      unsigned char* dataArray = new unsigned char[192000];
+      delay(500);
 
-          // create buffer for read
-          uint8_t buff[1280] = { 0 };
-          // get tcp stream
-          WiFiClient * stream = http.getStreamPtr();
-          // read all data from server
-          int numData = 0;
-          String headString = "";
-          while(http.connected() && (len > 0 || len == -1)) {
-              // get available data size
-              size_t size = stream->available();
-              int c = 0;
-              if(size) {
-                  // read up to 1280 byte
-                  c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-                  String responseString((char*)buff, c);
-                  responseString = headString + responseString;
-                  String temp = ""; 
-                  for (int i = 0; i < responseString.length(); i++) {
-                    char cAti = responseString.charAt(i);
-                    if (cAti == ',') { 
-                      dataArray[numData] = temp.toInt();
-                      Serial.print(dataArray[numData]);
-                      temp = ""; // 清空临时字符串
-                      numData++; // 数组索引加1
-                    } else {
-                      temp += cAti; // 将字符添加到临时字符串中
-                    }
-                  }
-                  if (temp.length() > 0) { // 处理最后一个数字
-                    headString = temp;
-                  } else{
-                    headString = "";
-                  }
-                  if(len > 0) {
-                      len -= c;
-                  }
-                }
-          }
+      Serial.print("开始读取字节流\n");
+      int len = http.getSize();
+      // create buffer for read
+      Serial.print(len);
+      Serial.print('\n');
+
+      // get tcp stream
+      WiFiClient *stream = http.getStreamPtr();
+      for (int i = 0; i < 300; i++)
+      {
+        unsigned char* buff = new unsigned char[640];
+        stream->readBytes(buff, 640);
+        memcpy(dataArray + i * 640, buff, 640);
+        delay(20);
+        Serial.print(i);
+        delete[] buff;
       }
+      delay(500);
+      Serial.print("\n字节流读取完毕\n");
+      // const unsigned gImage_7in3f[192000] = dataArray;
+      // for(int k = 0; k < 192000; k++){
+      //   Serial.print(dataArray[k]);
+      // }
+      epd.EPD_7IN3F_Display_part(dataArray, 0, 0, 800, 480);
+      delay(500);
+
+      Serial.print("屏幕刷新完成\n");
+      // epd.Sleep();
+
+      delete[] dataArray;
+    }
   }
-  Serial.print("获取到了一个数据 \n");
   http.end();
+
+}
+
+#define TIME_ADDRESS 0 // 存储时间的起始地址
+#define TIME_LENGTH 200 // 存储时间的最大长度，根据需要调整
+
+String readStoredTime()
+{
+  char storedTime[TIME_LENGTH + 1]; // 创建一个字符数组来存储时间
+  EEPROM.begin(TIME_LENGTH + 1);    // 初始化EEPROM库
+
+  // 从EEPROM中读取存储的时间数据
+  for (int i = 0; i < TIME_LENGTH; i++)
+  {
+    storedTime[i] = EEPROM.read(TIME_ADDRESS + i);
+  }
+  storedTime[TIME_LENGTH] = '\0'; // 添加字符串结束符
+
+  EEPROM.end(); // 结束EEPROM库的使用
+
+  return String(storedTime);
+}
+
+void saveTime(String time)
+{
+  EEPROM.begin(TIME_LENGTH + 1); // 初始化EEPROM库
+  int length = time.length() < 200 ? time.length() : 200;
+
+  // 将时间字符串写入EEPROM
+  for (int i = 0; i < length; i++)
+  {
+    EEPROM.write(TIME_ADDRESS + i, time.charAt(i));
+  }
+
+  // 如果时间字符串较短，用空字符填充EEPROM余下的空间
+  for (int i = length; i < TIME_LENGTH; i++)
+  {
+    EEPROM.write(TIME_ADDRESS + i, '\0');
+  }
+
+  EEPROM.commit(); // 提交更改
+  EEPROM.end();    // 结束EEPROM库的使用
+}
+
+void checkUpdate()
+{
+  HTTPClient http;
+  http.begin("http://192.168.1.196:5001/api/updatetime");
+  int httpCode = http.GET();
+
+  if (httpCode == HTTP_CODE_OK)
+  {
+    String updateTime = http.getString();
+    Serial.println("Remote TIme is: ");
+    Serial.println(updateTime);
+    String storedTime = readStoredTime();
+    Serial.println("Stored TIme is: ");
+    Serial.println(storedTime);
+
+    if (updateTime.compareTo(storedTime) > 0)
+    {
+      // 执行更新操作
+      Serial.println("Performing update...");
+      updateEink();
+      // 在这里执行你的更新操作代码
+
+      // 保存最新的更新时间到EEPROM
+      saveTime(updateTime);
+    }
+    else
+    {
+      Serial.println("No update required.");
+    }
+  }
+  else
+  {
+    Serial.println("Failed to fetch update time.");
+    return;
+  }
+
+  http.end();
+
+  String storedTime = readStoredTime();
+
+  // 如果获取的时间比本地时间更新，执行更新操作
 }
 
 void loop()
 {
-  UpdateEink();
+  checkUpdate();
 
-  delay(1000);
+  delay(5000);
 }
