@@ -88,7 +88,7 @@ void setup()
   // Serial.print("Show pic\r\n ");
   // epd.EPD_7IN3F_Display_part(large_img, 0, 0, 800, 480);
 
-  // epd.Sleep();
+  epd.Sleep();
 }
 
 void updateEink()
@@ -131,7 +131,7 @@ void updateEink()
       delay(500);
 
       Serial.print("屏幕刷新完成\n");
-      // epd.Sleep();
+      epd.Sleep();
 
       delete[] dataArray;
     }
