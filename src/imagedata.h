@@ -24,5 +24,6 @@
  */
  
 extern const unsigned char gImage_7in3f[];
+extern const unsigned char large_img[];
 
 /* FILE END */

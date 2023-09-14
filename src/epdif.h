@@ -36,13 +36,21 @@
 //#define CS_PIN          10
 //#define BUSY_PIN        7
 
-#define RST_PIN 32
-#define DC_PIN 27
-#define BUSY_PIN 25
-#define CS_PIN 22
+// #define RST_PIN 32
+// #define DC_PIN 27
+// #define BUSY_PIN 25
+// #define CS_PIN 22
 
-#define HSPI_COPI 17
-#define HSPI_SCLK 21
+// #define HSPI_COPI 17
+// #define HSPI_SCLK 21
+
+#define RST_PIN 8
+#define DC_PIN 1
+#define BUSY_PIN 3
+#define CS_PIN 10
+
+#define HSPI_COPI 7
+#define HSPI_SCLK 6
 
 class EpdIf {
 public:
