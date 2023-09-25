@@ -201,9 +201,9 @@ void Epd::TurnOnDisplay(void) {
 function :  Sends the image buffer in RAM to e-Paper and displays
 parameter:
 ******************************************************************************/
-void Epd::EPD_7IN3F_Display(UBYTE *image) {
+void Epd::EPD_7IN3F_Display(const UBYTE *image) {
     unsigned long i,j;
-    Serial.print("开始刷新屏幕\n");
+    
     SendCommand(0x10);
     for(i=0; i<height; i++) {
         for(j=0; j<width/2; j++) {
@@ -218,7 +218,7 @@ void Epd::EPD_7IN3F_Display(UBYTE *image) {
 function :  Sends the part image buffer in RAM to e-Paper and displays
 parameter:
 ******************************************************************************/
-void Epd::EPD_7IN3F_Display_part(UBYTE *image, UWORD xstart, UWORD ystart, 
+void Epd::EPD_7IN3F_Display_part(const UBYTE *image, UWORD xstart, UWORD ystart, 
                                         UWORD image_width, UWORD image_heigh)
 {
     unsigned long i,j;
