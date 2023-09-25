@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <SPIFFS.h>
+#include <esp_wifi.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 
@@ -21,9 +22,10 @@ extern "C" {
 }
 #include <AsyncMqttClient.h>
 
-#define WIFI_SSID "TP-LINK_9EE6"
-#define WIFI_PASSWORD "12345678"
-// #define MQTT_HOST broker.emqx.io
+#define WIFI_SSID "tjuwlan"
+// #define WIFI_PASSWORD "12345678"
+// #define WIFI_SSID "子鸣的 iPhone"
+// #define WIFI_PASSWORD "lzm040214"
 #define MQTT_PORT 1883
 
 AsyncMqttClient mqttClient;
@@ -34,7 +36,7 @@ TimerHandle_t wifiReconnectTimer;
 
 void connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(WIFI_SSID, "");
 }
 
 WiFiClientSecure net;
@@ -69,17 +71,9 @@ void onMqttConnect(bool sessionPresent) {
   Serial.println("Connected to MQTT.");
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
-  uint16_t packetIdSub = mqttClient.subscribe("lazys_epaper_byte_stream", 0);
+  uint16_t packetIdSub = mqttClient.subscribe("lazys_epaper_byte_stream", 2);
   Serial.print("Subscribing at QoS 0, packetId: ");
   Serial.println(packetIdSub);
-  // mqttClient.publish("test/lol", 0, true, "test 1");
-  // Serial.println("Publishing at QoS 0");
-  // uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
-  // Serial.print("Publishing at QoS 1, packetId: ");
-  // Serial.println(packetIdPub1);
-  // uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
-  // Serial.print("Publishing at QoS 2, packetId: ");
-  // Serial.println(packetIdPub2);
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -150,8 +144,15 @@ void onMqttPublish(uint16_t packetId) {
 }
 
 void setup() {
+  // f8:4d:89:66:4d:c2
   Serial.begin(115200);
   delay(3000);
+  uint8_t newMACAddress[] = {0xF8, 0x4D, 0x89, 0x66, 0x4D, 0xC2};
+  WiFi.mode(WIFI_STA);
+  esp_wifi_set_mac(WIFI_IF_STA, &newMACAddress[0]);
+  Serial.print("[NEW] ESP32 Board MAC Address:  ");
+  Serial.println(WiFi.macAddress());
+
   // if (epd.Init() != 0)
   // {
   //   Serial.print("eP init F");
@@ -165,7 +166,6 @@ void setup() {
   wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
 
   WiFi.onEvent(WiFiEvent);
-  // connectToWifi();
 
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);
@@ -174,6 +174,20 @@ void setup() {
   mqttClient.onMessage(onMqttMessage);
   // mqttClient.onPublish(onMqttPublish);
   connectToWifi();
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  Serial.print("MAC Address: ");
+  Serial.print(mac[0], HEX);
+  Serial.print(":");
+  Serial.print(mac[1], HEX);
+  Serial.print(":");
+  Serial.print(mac[2], HEX);
+  Serial.print(":");
+  Serial.print(mac[3], HEX);
+  Serial.print(":");
+  Serial.print(mac[4], HEX);
+  Serial.print(":");
+  Serial.println(mac[5], HEX);
 }
 
 void loop() {
